@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Form, Button, Card, Container, Alert } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../services/api';
+import { toast } from 'react-toastify';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -51,13 +52,16 @@ const Register = () => {
     try {
       await authService.register(formData.username, formData.password);
       setSuccess('Inscription réussie ! Vous pouvez maintenant vous connecter.');
+      toast.success('Inscription réussie !');
       
       // Rediriger vers la connexion après 2 secondes
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError(err.response?.data || 'Erreur lors de l\'inscription');
+      const errorMessage = err.response?.data || 'Erreur lors de l\'inscription';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
