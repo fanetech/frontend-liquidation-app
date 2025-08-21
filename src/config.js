@@ -26,8 +26,8 @@ export const config = {
   ENDPOINTS: {
     AUTH: {
       LOGIN: '/auth/login',
-      REGISTER: '/auth/register',
-      CREATE_ADMIN: '/auth/create-admin'
+      REGISTER: '/auth/register/user',
+      CREATE_ADMIN: '/auth/register/admin'
     },
     CUSTOMERS: '/customers',
     LIQUIDATIONS: '/liquidations'
