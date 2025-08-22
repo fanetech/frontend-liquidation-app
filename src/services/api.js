@@ -41,12 +41,21 @@ api.interceptors.response.use(
 // Service d'authentification
 export const authService = {
   login: async (username, password) => {
-    const response = await api.post('/auth/login', { username, password });
+    const response = await api.post(config.ENDPOINTS.AUTH.LOGIN, { username, password });
     return response.data;
   },
 
-  register: async (username, password) => {
-    const response = await api.post('/auth/register', { username, password });
+  register: async (username, password, role = null) => {
+    const data = { username, password };
+    if (role) {
+      data.role = role;
+    }
+    const response = await api.post(config.ENDPOINTS.AUTH.REGISTER, data);
+    return response.data;
+  },
+
+  createAdmin: async (username, password) => {
+    const response = await api.post(config.ENDPOINTS.AUTH.CREATE_ADMIN, { username, password });
     return response.data;
   },
 
@@ -61,28 +70,7 @@ export const authService = {
       return user ? JSON.parse(user) : null;
     } catch (error) {
       console.error('Erreur lors du parsing de l\'utilisateur:', error);
-      localStorage.removeItem('user'); // Nettoyer les données corrompues
-      return null;
-    }
-  },
-
-  fetchCurrentUser: async () => {
-    try {
-      const response = await api.get('/auth/me');
-      const userInfo = response.data;
-      
-      // Mettre à jour les informations utilisateur dans le localStorage
-      const user = {
-        id: userInfo.id,
-        username: userInfo.username,
-        enabled: userInfo.enabled,
-        roles: userInfo.roles.map(roleName => ({ name: roleName }))
-      };
-      
-      localStorage.setItem('user', JSON.stringify(user));
-      return user;
-    } catch (error) {
-      console.error('Erreur lors de la récupération des informations utilisateur:', error);
+      localStorage.removeItem('user');
       return null;
     }
   },
@@ -93,7 +81,13 @@ export const authService = {
 
   isAdmin: () => {
     const user = authService.getCurrentUser();
-    return user && user.roles && user.roles.some(role => role.name === 'ROLE_ADMIN');
+    if (!user || !user.roles) return false;
+    
+    const roles = Array.isArray(user.roles) ? user.roles : [];
+    return roles.some(role => {
+      const roleName = typeof role === 'string' ? role : role.name;
+      return roleName === 'ROLE_ADMIN';
+    });
   }
 };
 

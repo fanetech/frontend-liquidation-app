@@ -20,6 +20,17 @@ export const config = {
   ROLES: {
     USER: 'ROLE_USER',
     ADMIN: 'ROLE_ADMIN'
+  },
+  
+  // Endpoints de l'API
+  ENDPOINTS: {
+    AUTH: {
+      LOGIN: '/auth/login',
+      REGISTER: '/auth/register',
+      CREATE_ADMIN: '/auth/create-admin'
+    },
+    CUSTOMERS: '/customers',
+    LIQUIDATIONS: '/liquidations'
   }
 };
 

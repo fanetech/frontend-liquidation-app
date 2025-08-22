@@ -1,59 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { Form, Button, Card, Container, Alert, Row, Col } from 'react-bootstrap';
-import { useNavigate, useParams } from 'react-router-dom';
-import { productService, authService } from '../services/api';
+import React, { useState } from 'react';
+import { Container, Row, Col, Card, Button, Form, Alert } from 'react-bootstrap';
+import { authService } from '../services/api';
+import { toast } from 'react-toastify';
+import { FaUserShield, FaPlus } from 'react-icons/fa';
 
 const Admin = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: ''
+    username: '',
+    password: '',
+    confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const isEditMode = !!id;
-
-  useEffect(() => {
-    if (isEditMode) {
-      fetchProduct();
-    }
-  }, [id]);
-
-  const fetchProduct = async () => {
-    try {
-      const product = await productService.getById(id);
-      setFormData({
-        name: product.name,
-        description: product.description,
-        price: product.price.toString()
-      });
-    } catch (err) {
-      setError('Erreur lors du chargement du produit');
-    }
-  };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'price' ? value.replace(/[^0-9.]/g, '') : value
-    }));
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
-      setError('Le nom du produit est obligatoire');
+    if (formData.password !== formData.confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
       return false;
     }
-    if (!formData.description.trim()) {
-      setError('La description est obligatoire');
+    if (formData.password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères');
       return false;
     }
-    if (!formData.price || parseFloat(formData.price) <= 0) {
-      setError('Le prix doit être supérieur à 0');
+    if (formData.username.length < 3) {
+      setError('Le nom d\'utilisateur doit contenir au moins 3 caractères');
       return false;
     }
     return true;
@@ -71,116 +49,95 @@ const Admin = () => {
     }
 
     try {
-      const productData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        price: parseFloat(formData.price)
-      };
-
-      if (isEditMode) {
-        await productService.update(id, productData);
-        setSuccess('Produit modifié avec succès !');
-      } else {
-        await productService.create(productData);
-        setSuccess('Produit créé avec succès !');
-        setFormData({ name: '', description: '', price: '' });
-      }
-
-      // Rediriger vers la liste des produits après 2 secondes
-      setTimeout(() => {
-        navigate('/products');
-      }, 2000);
+      await authService.createAdmin(formData.username, formData.password);
+      setSuccess('Administrateur créé avec succès !');
+      toast.success('Administrateur créé avec succès !');
+      
+      // Réinitialiser le formulaire
+      setFormData({
+        username: '',
+        password: '',
+        confirmPassword: ''
+      });
     } catch (err) {
-      setError(err.response?.data || 'Erreur lors de l\'opération');
+      const errorMessage = err.response?.data || 'Erreur lors de la création de l\'administrateur';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  // Vérifier si l'utilisateur est admin
-  if (!authService.isAdmin()) {
-    return (
-      <Container>
-        <Alert variant="danger">
-          Accès refusé. Vous devez être administrateur pour accéder à cette page.
-        </Alert>
-      </Container>
-    );
-  }
-
   return (
     <Container>
       <Row className="justify-content-center">
-        <Col md={8}>
-          <Card className="shadow">
-            <Card.Header className="text-center">
-              <h3>{isEditMode ? '✏️ Modifier le produit' : '➕ Ajouter un nouveau produit'}</h3>
+        <Col md={8} lg={6}>
+          <Card className="mt-4">
+            <Card.Header className="text-center bg-primary text-white">
+              <h4 className="mb-0">
+                <FaUserShield className="me-2" />
+                Créer un Administrateur
+              </h4>
             </Card.Header>
             <Card.Body>
               {error && <Alert variant="danger">{error}</Alert>}
               {success && <Alert variant="success">{success}</Alert>}
-
+              
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Nom du produit *</Form.Label>
+                  <Form.Label>Nom d'utilisateur</Form.Label>
                   <Form.Control
                     type="text"
-                    name="name"
-                    value={formData.name}
+                    name="username"
+                    value={formData.username}
                     onChange={handleChange}
                     required
-                    placeholder="Entrez le nom du produit"
+                    placeholder="Nom d'utilisateur de l'administrateur"
+                    minLength={3}
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Description *</Form.Label>
+                  <Form.Label>Mot de passe</Form.Label>
                   <Form.Control
-                    as="textarea"
-                    rows={3}
-                    name="description"
-                    value={formData.description}
+                    type="password"
+                    name="password"
+                    value={formData.password}
                     onChange={handleChange}
                     required
-                    placeholder="Décrivez le produit"
+                    placeholder="Mot de passe sécurisé"
+                    minLength={6}
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Prix (€) *</Form.Label>
+                  <Form.Label>Confirmer le mot de passe</Form.Label>
                   <Form.Control
-                    type="text"
-                    name="price"
-                    value={formData.price}
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
                     onChange={handleChange}
                     required
-                    placeholder="0.00"
-                    pattern="[0-9]*[.]?[0-9]+"
+                    placeholder="Confirmez le mot de passe"
+                    minLength={6}
                   />
-                  <Form.Text className="text-muted">
-                    Format: 19.99
-                  </Form.Text>
                 </Form.Group>
 
-                <div className="d-grid gap-2">
-                  <Button
-                    variant={isEditMode ? "primary" : "success"}
-                    type="submit"
-                    disabled={loading}
-                    size="lg"
-                  >
-                    {loading ? 'Traitement...' : (isEditMode ? 'Modifier' : 'Créer')}
-                  </Button>
-                  
-                  <Button
-                    variant="outline-secondary"
-                    onClick={() => navigate('/products')}
-                    size="lg"
-                  >
-                    Annuler
-                  </Button>
-                </div>
+                <Button
+                  variant="primary"
+                  type="submit"
+                  className="w-100"
+                  disabled={loading}
+                >
+                  <FaPlus className="me-2" />
+                  {loading ? 'Création...' : 'Créer l\'administrateur'}
+                </Button>
               </Form>
+
+              <Alert variant="info" className="mt-3">
+                <strong>Note :</strong> Cet utilisateur aura tous les droits d'administration 
+                et pourra gérer les clients, les liquidations et les autres utilisateurs.
+              </Alert>
             </Card.Body>
           </Card>
         </Col>

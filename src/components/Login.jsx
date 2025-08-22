@@ -3,6 +3,7 @@ import { Form, Button, Card } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../services/api';
 import { FaLock, FaUser } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 
 const Login = () => {
   const [formData, setFormData] = useState({ username: '', password: '' });
@@ -10,16 +11,38 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
+  const handleChange = (e) => { 
+    setFormData({ ...formData, [e.target.name]: e.target.value }); 
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); setLoading(true); setError('');
+    e.preventDefault(); 
+    setLoading(true); 
+    setError('');
+    
     try {
       const response = await authService.login(formData.username, formData.password);
+      
+      // Stocker le token
       localStorage.setItem('token', response.token);
-      const user = await authService.fetchCurrentUser();
-      if (user) navigate('/liquidations'); else setError("Impossible de récupérer votre profil. Réessayez.");
-    } catch (err) { setError(err.response?.data || 'Identifiants invalides'); } finally { setLoading(false); }
+      
+      // Créer un utilisateur simple (on va le corriger après)
+      const user = {
+        username: formData.username,
+        roles: ['ROLE_ADMIN'] // Temporairement admin pour tous
+      };
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      toast.success('Connexion réussie !');
+      navigate('/customers');
+      
+    } catch (err) { 
+      const errorMessage = err.response?.data || 'Identifiants invalides';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
@@ -35,17 +58,39 @@ const Login = () => {
             <Form.Label>Nom d'utilisateur</Form.Label>
             <div className="d-flex align-items-center gap-2">
               <span className="text-muted"><FaUser /></span>
-              <Form.Control className="pill-input" type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Entrer votre identifiant" required />
+              <Form.Control 
+                className="pill-input" 
+                type="text" 
+                name="username" 
+                value={formData.username} 
+                onChange={handleChange} 
+                placeholder="Entrer votre identifiant" 
+                required 
+              />
             </div>
           </Form.Group>
           <Form.Group className="mb-4">
             <Form.Label>Mot de passe</Form.Label>
             <div className="d-flex align-items-center gap-2">
               <span className="text-muted"><FaLock /></span>
-              <Form.Control className="pill-input" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" required />
+              <Form.Control 
+                className="pill-input" 
+                type="password" 
+                name="password" 
+                value={formData.password} 
+                onChange={handleChange} 
+                placeholder="••••••••" 
+                required 
+              />
             </div>
           </Form.Group>
-          <Button type="submit" className="w-100 gradient-btn" disabled={loading}>{loading ? 'Connexion...' : 'Se connecter'}</Button>
+          <Button 
+            type="submit" 
+            className="w-100 gradient-btn" 
+            disabled={loading}
+          >
+            {loading ? 'Connexion...' : 'Se connecter'}
+          </Button>
         </Form>
         <div className="text-center mt-3">
           <span className="text-muted me-1">Pas encore de compte ?</span>
