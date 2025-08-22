@@ -1,189 +1,140 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Container, Row, Col, Button, InputGroup, Form, Modal, Pagination } from 'react-bootstrap';
-import { liquidationService } from '../../services/liquidationService';
-import { customerService } from '../../services/customerService';
+import React, { useEffect, useState, useMemo } from 'react';
+import DataTable from 'react-data-table-component';
+import { Container, Row, Col, Button, Modal, Form, Card } from 'react-bootstrap';
+import { FaPlus } from 'react-icons/fa';
 import LiquidationModal from './LiquidationModals';
-import { toast } from 'react-toastify';
+import { listLiquidations, createLiquidation, updateLiquidation, getLiquidation, payLiquidation } from '../../services/liquidationService';
 
-const statusFr = (s) => s === 'PAID' ? 'Payée' : s === 'PENDING' ? 'En attente' : 'Annulée';
-const statusClass = (s) => s === 'PAID' ? 'badge-paid' : s === 'PENDING' ? 'badge-pending' : 'badge-cancelled';
+const columnsDef = (onEdit, onPay) => [
+  { name: 'Client', selector: row => `${row.customer?.lastName} ${row.customer?.firstName}`, sortable: true },
+  { name: 'Taxe', selector: row => row.taxType, sortable: true },
+  { name: 'Montant', selector: row => row.amount, sortable: true },
+  { name: 'Emission', selector: row => row.issueDate, sortable: true },
+  { name: 'Echéance', selector: row => row.dueDate, sortable: true },
+  { name: 'Statut', selector: row => row.status, sortable: true },
+  {
+    name: 'Actions',
+    cell: row => (
+      <div className="d-flex gap-2">
+        <Button size="sm" variant="primary" onClick={() => onEdit(row)}>Modifier</Button>
+        {row.status !== 'PAID' && (
+          <Button size="sm" variant="success" onClick={() => onPay(row)}>Marquer payé</Button>
+        )}
+      </div>
+    ),
+    ignoreRowClick: true,
+    button: true,
+  },
+];
+
+const customStyles = { headCells: { style: { fontWeight: 600 } } };
 
 const LiquidationsPage = () => {
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('ALL');
-  const [customerId, setCustomerId] = useState('ALL');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-
-  const [data, setData] = useState(liquidationService.getAll());
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [viewing, setViewing] = useState(null);
+  const [filters, setFilters] = useState({ customerId: '', status: '', startDate: '', endDate: '' });
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [totalRows, setTotalRows] = useState(0);
 
-  // Pagination state
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const fetchData = async () => {
+    setLoading(true);
+    const res = await listLiquidations({
+      customerId: filters.customerId || undefined,
+      status: filters.status || undefined,
+      startDate: filters.startDate || undefined,
+      endDate: filters.endDate || undefined,
+      page,
+      size,
+    });
+    setData(res.content || []);
+    setTotalRows(res.totalElements || 0);
+    setLoading(false);
+  };
 
-  const customers = customerService.getAll();
-
-  const filtered = useMemo(() => {
-    const items = liquidationService.search({ text: query, status, fromDate, toDate });
-    if (customerId !== 'ALL') return items.filter(l => l.customerId === Number(customerId));
-    return items;
-  }, [query, status, fromDate, toDate, customerId, data]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages, page]);
-  const start = (page - 1) * pageSize;
-  const rows = filtered.slice(start, start + pageSize);
-
-  const paidCount = useMemo(() => filtered.filter(x => x.status === 'PAID').length, [filtered]);
+  useEffect(() => { fetchData(); }, []);
 
   const handleAdd = () => { setEditing(null); setShowModal(true); };
   const handleEdit = (row) => { setEditing(row); setShowModal(true); };
-  const handleView = (row) => setViewing(row);
+  const handlePay = async (row) => {
+    await payLiquidation(row.id);
+    fetchData();
+  };
 
-  const onSubmit = (form) => {
-    if (editing) {
-      liquidationService.update(editing.id, { ...form, date: new Date(form.date).getTime() });
-      toast.success('Liquidation mise à jour');
-    } else {
-      liquidationService.create({ ...form, date: new Date(form.date).getTime() });
-      toast.success('Liquidation créée');
-    }
-    setData(liquidationService.getAll());
+  const onSubmit = async (form) => {
+    if (editing) await updateLiquidation(editing.id, form);
+    else await createLiquidation(form);
+    fetchData();
     setShowModal(false);
     setEditing(null);
   };
 
-  const markPaid = (row) => {
-    liquidationService.markPaid(row.id);
-    setData(liquidationService.getAll());
-    toast.success('Marquée comme payée');
-  };
+  const columns = useMemo(() => columnsDef(handleEdit, handlePay), []);
 
   return (
     <Container fluid className="page-fluid page-flex">
-      <Row className="mb-3 align-items-center">
-        <Col><h2 className="section-title">Liquidation Interface</h2></Col>
-        <Col md="auto">
-          <Button className="gradient-btn" onClick={handleAdd}>+ Nouvelle liquidation</Button>
-        </Col>
+      <Row className="mb-3 align-items-center mx-0">
+        <Col><h2 className="section-title">Liquidations</h2></Col>
+        <Col md="auto"><Button variant="success" onClick={handleAdd}><FaPlus className="me-2" />Ajouter</Button></Col>
       </Row>
 
-      <Row className="g-3 mb-3">
-        <Col md={3}>
-          <Form.Label>Statut</Form.Label>
-          <Form.Select value={status} onChange={(e)=>{ setStatus(e.target.value); setPage(1); }}>
-            <option value="ALL">Tous</option>
-            <option value="PENDING">En attente</option>
-            <option value="PAID">Payée</option>
-            <option value="CANCELLED">Annulée</option>
-          </Form.Select>
-        </Col>
-        <Col md={3}>
-          <Form.Label>Du</Form.Label>
-          <Form.Control type="date" value={fromDate} onChange={(e)=>{ setFromDate(e.target.value); setPage(1); }} />
-        </Col>
-        <Col md={3}>
-          <Form.Label>Au</Form.Label>
-          <Form.Control type="date" value={toDate} onChange={(e)=>{ setToDate(e.target.value); setPage(1); }} />
-        </Col>
-        <Col md={3}>
-          <Form.Label>Client</Form.Label>
-          <Form.Select value={customerId} onChange={(e)=>{ setCustomerId(e.target.value); setPage(1); }}>
-            <option value="ALL">Nom, email ou +226…</option>
-            {customers.map(c => <option key={c.id} value={c.id}>{c.fullName}</option>)}
-          </Form.Select>
-        </Col>
-        <Col md={6}>
-          <Form.Label>Recherche</Form.Label>
-          <Form.Control placeholder="Réf, client…" value={query} onChange={(e)=>{ setQuery(e.target.value); setPage(1); }} />
-        </Col>
-        <Col md={2} className="ms-auto">
-          <Form.Label>Par page</Form.Label>
-          <Form.Select value={pageSize} onChange={(e)=>{ setPageSize(Number(e.target.value)); setPage(1); }}>
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={20}>20</option>
-            <option value={50}>50</option>
-          </Form.Select>
-        </Col>
-      </Row>
+      <Card className="mb-3 p-3">
+        <Form className="row g-2">
+          <div className="col-md-3">
+            <Form.Label>Client ID</Form.Label>
+            <Form.Control value={filters.customerId} onChange={e => setFilters({ ...filters, customerId: e.target.value })} placeholder="ID client" />
+          </div>
+          <div className="col-md-3">
+            <Form.Label>Statut</Form.Label>
+            <Form.Select value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })}>
+              <option value="">Tous</option>
+              <option value="PENDING">PENDING</option>
+              <option value="PAID">PAID</option>
+              <option value="OVERDUE">OVERDUE</option>
+            </Form.Select>
+          </div>
+          <div className="col-md-3">
+            <Form.Label>Début</Form.Label>
+            <Form.Control type="date" value={filters.startDate} onChange={e => setFilters({ ...filters, startDate: e.target.value })} />
+          </div>
+          <div className="col-md-3">
+            <Form.Label>Fin</Form.Label>
+            <Form.Control type="date" value={filters.endDate} onChange={e => setFilters({ ...filters, endDate: e.target.value })} />
+          </div>
+          <div className="col-12 text-end">
+            <Button variant="primary" onClick={() => { setPage(0); fetchData(); }}>Filtrer</Button>
+          </div>
+        </Form>
+      </Card>
 
-      <div className="flex-fill-scroll">
-        <table className="table table-hover surface mb-0">
-          <thead>
-            <tr>
-              <th>Référence</th>
-              <th>Date</th>
-              <th>Client</th>
-              <th className="text-end">Montant (FCFA)</th>
-              <th>Statut</th>
-              <th className="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(row => (
-              <tr key={row.id}>
-                <td>{row.code}</td>
-                <td>{new Date(row.date).toLocaleDateString()}</td>
-                <td>{row.customerName}</td>
-                <td className="text-end">{row.amount.toLocaleString()}</td>
-                <td>
-                  <span className={`badge badge-pill ${statusClass(row.status)}`}>{statusFr(row.status)}</span>
-                </td>
-                <td className="text-end">
-                  <div className="action-group justify-content-end">
-                    <Button size="sm" variant="outline-primary" onClick={()=>setEditing(row)}>Modifier</Button>
-                    {row.status !== 'PAID' && (
-                      <Button size="sm" variant="success" onClick={()=>markPaid(row)}>Marquer payé</Button>
-                    )}
-                    <Button size="sm" variant="outline-secondary" onClick={()=>setViewing(row)}>Détails</Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="surface dt-wrapper full-bleed">
+        <DataTable
+          columns={columns}
+          data={data}
+          progressPending={loading}
+          pagination
+          paginationServer
+          paginationTotalRows={totalRows}
+          onChangeRowsPerPage={(newPerPage) => { setSize(newPerPage); setPage(0); fetchData(); }}
+          onChangePage={(p) => { setPage(p - 1); fetchData(); }}
+          highlightOnHover
+          responsive
+          customStyles={customStyles}
+          noDataComponent={<div className="text-muted p-3">Aucune liquidation</div>}
+        />
       </div>
 
-      <Row className="mt-2">
-        <Col className="d-flex justify-content-between align-items-center">
-          <div className="text-muted small">{filtered.length} enregistrement(s) • Page {page}/{totalPages}</div>
-          <Pagination className="mb-0">
-            <Pagination.First onClick={()=>setPage(1)} disabled={page===1} />
-            <Pagination.Prev onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} />
-            {Array.from({length: totalPages}, (_,i)=>i+1).map(p => (
-              <Pagination.Item key={p} active={p===page} onClick={()=>setPage(p)}>{p}</Pagination.Item>
-            ))}
-            <Pagination.Next onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} />
-            <Pagination.Last onClick={()=>setPage(totalPages)} disabled={page===totalPages} />
-          </Pagination>
-        </Col>
-      </Row>
-
+      {/* Modal d'ajout / modification */}
       <LiquidationModal
         show={showModal}
-        onHide={()=>setShowModal(false)}
+        onHide={() => setShowModal(false)}
         initialValues={editing}
         onSubmit={onSubmit}
       />
 
-      <Modal show={!!viewing} onHide={()=>setViewing(null)} centered>
-        <Modal.Header closeButton><Modal.Title className="fw-bold">Détails liquidation</Modal.Title></Modal.Header>
-        <Modal.Body>
-          {viewing && (
-            <div>
-              <p className="mb-1"><strong>Référence:</strong> {viewing.code}</p>
-              <p className="mb-1"><strong>Client:</strong> {viewing.customerName}</p>
-              <p className="mb-1"><strong>Montant:</strong> {viewing.amount.toLocaleString()} FCFA</p>
-              <p className="mb-1"><strong>Date:</strong> {new Date(viewing.date).toLocaleString()}</p>
-              <p className="mb-0"><strong>Statut:</strong> {statusFr(viewing.status)}</p>
-            </div>
-          )}
-        </Modal.Body>
-      </Modal>
+      {/* plus de suppression locale: actions via API */}
     </Container>
   );
 };

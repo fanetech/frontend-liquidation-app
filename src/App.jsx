@@ -11,6 +11,7 @@ import Navigation from './components/Navbar';
 import Home from './components/Home';
 import Login from './components/Login';
 import Register from './components/Register';
+import Admin from './components/Admin';
 import ProtectedRoute from './components/ProtectedRoute';
 import CustomersPage from './components/customers/CustomersPage';
 import LiquidationsPage from './components/liquidations/LiquidationsPage';
@@ -20,11 +21,19 @@ function App() {
     <Router>
       <div className="App">
         <Navigation />
-        <main className="py-4">
+        <main className="py-4 full-width-main">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/customers" 
               element={
@@ -44,7 +53,18 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        <ToastContainer position="top-right" autoClose={2000} />
+        <ToastContainer 
+          position="top-right" 
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
       </div>
     </Router>
   );

@@ -1,92 +1,102 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
-import Select from 'react-select';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { customerService } from '../../services/customerService';
 
+// Validation avec Yup pour le backend
 const schema = yup.object({
-  customerId: yup.number().typeError('Client requis').required('Client requis'),
-  amount: yup.number().typeError('Montant invalide').positive('Doit être > 0').required('Montant requis'),
-  status: yup.string().oneOf(['PENDING', 'PAID', 'CANCELLED']).required(),
-  date: yup.date().typeError('Date invalide').required('Date requise'),
+  customerId: yup.number().typeError('ID client invalide').required('ID client requis').positive('ID invalide'),
+  taxType: yup.string().trim().required('Type de taxe requis'),
+  amount: yup.number().typeError('Montant invalide').positive('Doit être positif').required('Montant requis'),
+  issueDate: yup.string().required("Date d'émission requise"),
+  dueDate: yup.string().required("Date d'échéance requise"),
+  status: yup.mixed().oneOf(['PENDING', 'PAID', 'OVERDUE']).required('Statut requis'),
 });
 
-export const LiquidationModal = ({ show, onHide, initialValues, onSubmit }) => {
-  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm({
+const LiquidationModal = ({ show, onHide, initialValues, onSubmit }) => {
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     resolver: yupResolver(schema),
-    defaultValues: { customerId: '', amount: '', status: 'PENDING', date: new Date().toISOString().slice(0,10) },
+    defaultValues: { customerId: '', taxType: '', amount: '', issueDate: '', dueDate: '', status: 'PENDING' },
   });
-
-  const customerOptions = useMemo(() =>
-    customerService.getAll().map(c => ({ value: c.id, label: `${c.fullName} (${c.city})` })),
-    []
-  );
 
   useEffect(() => {
     if (show) {
-      const defaults = initialValues ? {
-        customerId: initialValues.customerId,
-        amount: initialValues.amount,
-        status: initialValues.status,
-        date: new Date(initialValues.date).toISOString().slice(0,10),
-      } : undefined;
-      reset(defaults);
+      if (initialValues) {
+        reset({
+          customerId: initialValues.customer?.id || '',
+          taxType: initialValues.taxType || '',
+          amount: initialValues.amount || '',
+          issueDate: initialValues.issueDate || '',
+          dueDate: initialValues.dueDate || '',
+          status: initialValues.status || 'PENDING',
+        });
+      } else {
+        reset({ customerId: '', taxType: '', amount: '', issueDate: '', dueDate: '', status: 'PENDING' });
+      }
     }
   }, [show, initialValues, reset]);
 
   return (
     <Modal show={show} onHide={onHide} centered>
-      <Form onSubmit={handleSubmit(onSubmit)}>
+      <Form onSubmit={handleSubmit((form) => onSubmit({
+        customer: { id: Number(form.customerId) },
+        taxType: form.taxType,
+        amount: form.amount,
+        issueDate: form.issueDate,
+        dueDate: form.dueDate,
+        status: form.status,
+      }))}>
         <Modal.Header closeButton>
-          <Modal.Title>{initialValues ? 'Modifier une liquidation' : 'Nouvelle liquidation'}</Modal.Title>
+          <Modal.Title>{initialValues ? 'Modifier une liquidation' : 'Ajouter une liquidation'}</Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
-          <Row className="g-3">
-            <Col md={12}>
-              <Form.Label>Client</Form.Label>
-              <Controller
-                control={control}
-                name="customerId"
-                render={({ field }) => (
-                  <div className="rs-dark">
-                    <Select
-                      classNamePrefix="react-select"
-                      {...field}
-                      options={customerOptions}
-                      value={customerOptions.find(o => o.value === field.value) || null}
-                      onChange={(opt) => field.onChange(opt?.value)}
-                      placeholder="Sélectionner un client..."
-                    />
-                  </div>
-                )}
-              />
-              {errors.customerId && <div className="text-danger small mt-1">{errors.customerId.message}</div>}
+          <Row>
+            <Col md={6} className="mb-3">
+              <Form.Label>ID Client</Form.Label>
+              <Form.Control {...register('customerId')} placeholder="ID du client" isInvalid={!!errors.customerId} />
+              <Form.Control.Feedback type="invalid">{errors.customerId?.message}</Form.Control.Feedback>
             </Col>
-            <Col md={6}>
+            <Col md={6} className="mb-3">
+              <Form.Label>Type de taxe</Form.Label>
+              <Form.Control {...register('taxType')} placeholder="Ex: TVA" isInvalid={!!errors.taxType} />
+              <Form.Control.Feedback type="invalid">{errors.taxType?.message}</Form.Control.Feedback>
+            </Col>
+
+            <Col md={6} className="mb-3">
               <Form.Label>Montant</Form.Label>
-              <Form.Control className="pill-input" type="number" step="0.01" placeholder="0.00" {...register('amount')} isInvalid={!!errors.amount} />
+              <Form.Control type="number" {...register('amount')} placeholder="Montant" isInvalid={!!errors.amount} />
               <Form.Control.Feedback type="invalid">{errors.amount?.message}</Form.Control.Feedback>
             </Col>
-            <Col md={6}>
-              <Form.Label>Date</Form.Label>
-              <Form.Control className="pill-input" type="date" {...register('date')} isInvalid={!!errors.date} />
-              <Form.Control.Feedback type="invalid">{errors.date?.message}</Form.Control.Feedback>
-            </Col>
-            <Col md={12}>
+            <Col md={6} className="mb-3">
               <Form.Label>Statut</Form.Label>
-              <Form.Select className="pill-input" {...register('status')}>
-                <option value="PENDING">En attente</option>
-                <option value="PAID">Payée</option>
-                <option value="CANCELLED">Annulée</option>
+              <Form.Select {...register('status')} isInvalid={!!errors.status}>
+                <option value="PENDING">PENDING</option>
+                <option value="PAID">PAID</option>
+                <option value="OVERDUE">OVERDUE</option>
               </Form.Select>
+              <Form.Control.Feedback type="invalid">{errors.status?.message}</Form.Control.Feedback>
+            </Col>
+
+            <Col md={6} className="mb-3">
+              <Form.Label>Date d'émission</Form.Label>
+              <Form.Control type="date" {...register('issueDate')} isInvalid={!!errors.issueDate} />
+              <Form.Control.Feedback type="invalid">{errors.issueDate?.message}</Form.Control.Feedback>
+            </Col>
+            <Col md={6} className="mb-3">
+              <Form.Label>Date d'échéance</Form.Label>
+              <Form.Control type="date" {...register('dueDate')} isInvalid={!!errors.dueDate} />
+              <Form.Control.Feedback type="invalid">{errors.dueDate?.message}</Form.Control.Feedback>
             </Col>
           </Row>
         </Modal.Body>
+
         <Modal.Footer>
           <Button variant="secondary" onClick={onHide}>Annuler</Button>
-          <Button type="submit" className="gradient-btn" disabled={isSubmitting}>{initialValues ? 'Enregistrer' : 'Créer'}</Button>
+          <Button type="submit" variant="primary" disabled={isSubmitting}>
+            {initialValues ? 'Enregistrer' : 'Ajouter'}
+          </Button>
         </Modal.Footer>
       </Form>
     </Modal>

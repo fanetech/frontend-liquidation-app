@@ -11,7 +11,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   if (requireAdmin && !isAdmin) {
-    return <Navigate to="/products" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
