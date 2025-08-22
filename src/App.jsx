@@ -21,7 +21,7 @@ function App() {
     <Router>
       <div className="App">
         <Navigation />
-        <main className="py-4">
+        <main className="py-4 full-width-main">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />

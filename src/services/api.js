@@ -81,13 +81,20 @@ export const authService = {
 
   isAdmin: () => {
     const user = authService.getCurrentUser();
-    if (!user || !user.roles) return false;
-    
-    const roles = Array.isArray(user.roles) ? user.roles : [];
-    return roles.some(role => {
-      const roleName = typeof role === 'string' ? role : role.name;
-      return roleName === 'ROLE_ADMIN';
-    });
+    if (!user) return false;
+    // Prefer backend-provided simplified role: "ADMIN" | "USER"
+    if (user.role) {
+      return user.role === 'ADMIN';
+    }
+    // Fallback for legacy structure with roles array
+    if (user.roles) {
+      const roles = Array.isArray(user.roles) ? user.roles : [];
+      return roles.some(role => {
+        const roleName = typeof role === 'string' ? role : role.name;
+        return roleName === 'ROLE_ADMIN';
+      });
+    }
+    return false;
   }
 };
 

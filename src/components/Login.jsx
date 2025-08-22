@@ -22,19 +22,20 @@ const Login = () => {
     
     try {
       const response = await authService.login(formData.username, formData.password);
-      
+
       // Stocker le token
       localStorage.setItem('token', response.token);
-      
-      // Créer un utilisateur simple (on va le corriger après)
+
+      // Stocker l'utilisateur renvoyé par le backend (username, role, redirect)
       const user = {
-        username: formData.username,
-        roles: ['ROLE_ADMIN'] // Temporairement admin pour tous
+        username: response.username || formData.username,
+        role: response.role, // 'ADMIN' | 'USER'
+        redirect: response.redirect,
       };
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       toast.success('Connexion réussie !');
-      navigate('/customers');
+      navigate(response.redirect || '/customers');
       
     } catch (err) { 
       const errorMessage = err.response?.data || 'Identifiants invalides';

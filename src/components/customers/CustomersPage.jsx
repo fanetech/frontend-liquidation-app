@@ -24,91 +24,92 @@ const CustomersPage = () => {
   const isAdmin = authService.isAdmin();
 
   // Colonnes pour le DataTable
-  const columns = useMemo(() => [
-    {
-      name: 'ID',
-      selector: row => row.id,
-      sortable: true,
-      width: '80px',
-    },
-    {
-      name: 'Nom',
-      selector: row => row.lastName,
-      sortable: true,
-    },
-    {
-      name: 'Prénom',
-      selector: row => row.firstName,
-      sortable: true,
-    },
-    {
-      name: 'Email',
-      selector: row => row.email,
-      sortable: true,
-    },
-    {
-      name: 'Téléphone',
-      selector: row => row.phone,
-      sortable: true,
-    },
-    {
-      name: 'IFU',
-      selector: row => row.ifu,
-      sortable: true,
-    },
-    {
-      name: 'Adresse',
-      selector: row => row.address,
-      sortable: true,
-      wrap: true,
-    },
-    {
-      name: 'Actions',
-      cell: row => (
-        <div className="d-flex gap-1">
-          <Button
-            variant="outline-info"
-            size="sm"
-            onClick={() => handleView(row)}
-            title="Voir"
-          >
-            <FaEye />
-          </Button>
-          <Button
-            variant="outline-warning"
-            size="sm"
-            onClick={() => handleEdit(row)}
-            title="Modifier"
-          >
-            <FaEdit />
-          </Button>
-          <Button
-            variant="outline-danger"
-            size="sm"
-            onClick={() => handleDelete(row)}
-            title="Supprimer"
-          >
-            <FaTrash />
-          </Button>
-        </div>
-      ),
-      width: '150px',
-    },
-  ], []);
+  const columns = useMemo(
+    () => [
+      {
+        name: 'ID',
+        selector: (row) => row.id,
+        sortable: true,
+        width: '80px',
+      },
+      {
+        name: 'Nom',
+        selector: (row) => row.lastName,
+        sortable: true,
+      },
+      {
+        name: 'Prénom',
+        selector: (row) => row.firstName,
+        sortable: true,
+      },
+      {
+        name: 'Email',
+        selector: (row) => row.email,
+        sortable: true,
+      },
+      {
+        name: 'Téléphone',
+        selector: (row) => row.phone,
+        sortable: true,
+      },
+      {
+        name: 'IFU',
+        selector: (row) => row.ifu,
+        sortable: true,
+      },
+      {
+        name: 'Adresse',
+        selector: (row) => row.address,
+        sortable: true,
+        wrap: true,
+      },
+      {
+        name: 'Actions',
+        cell: (row) => (
+          <div className="d-flex gap-1">
+            <Button
+              variant="outline-info"
+              size="sm"
+              onClick={() => handleView(row)}
+              title="Voir"
+            >
+              <FaEye />
+            </Button>
+            <Button
+              variant="outline-warning"
+              size="sm"
+              onClick={() => handleEdit(row)}
+              title="Modifier"
+            >
+              <FaEdit />
+            </Button>
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={() => handleDelete(row)}
+              title="Supprimer"
+            >
+              <FaTrash />
+            </Button>
+          </div>
+        ),
+        width: '150px',
+      },
+    ],
+    []
+  );
 
   // Charger les clients
   const loadCustomers = async (page = 0, search = '') => {
     try {
       setLoading(true);
       setError(null);
-      
       let response;
       if (search.trim()) {
         response = await customerService.searchCustomers(search, page, pageSize);
       } else {
         response = await customerService.getCustomers(page, pageSize);
       }
-      
       setCustomers(response.content || response);
       setTotalRows(response.totalElements || 0);
     } catch (error) {
@@ -131,7 +132,6 @@ const CustomersPage = () => {
       setCurrentPage(0); // Reset à la première page lors de la recherche
       loadCustomers(0, searchTerm);
     }, 500);
-
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
@@ -192,15 +192,14 @@ const CustomersPage = () => {
   };
 
   return (
-    <Container fluid>
+    <Container fluid className="page-fluid page-flex">
       <Row className="mb-4">
         <Col>
           <h2>Gestion des Clients</h2>
         </Col>
         <Col xs="auto">
           <Button variant="primary" onClick={handleAdd}>
-            <FaPlus className="me-2" />
-            Ajouter un client
+            <FaPlus className="me-2" /> Ajouter un client
           </Button>
         </Col>
       </Row>
@@ -273,7 +272,10 @@ const CustomersPage = () => {
               <div className="modal-body">
                 <p>
                   Êtes-vous sûr de vouloir supprimer le client{' '}
-                  <strong>{customerToDelete?.firstName} {customerToDelete?.lastName}</strong> ?
+                  <strong>
+                    {customerToDelete?.firstName} {customerToDelete?.lastName}
+                  </strong>{' '}
+                  ?
                 </p>
                 <p className="text-danger">Cette action est irréversible.</p>
               </div>
