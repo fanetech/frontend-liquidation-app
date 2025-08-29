@@ -1,104 +1,117 @@
 import React, { useState } from 'react';
-import { Form, Button, Card } from 'react-bootstrap';
-import { useNavigate, Link } from 'react-router-dom';
-import { authService } from '../services/api';
-import { FaLock, FaUser } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+import { authService } from '../services/api.js';
 
 const Login = () => {
-  const [formData, setFormData] = useState({ username: '', password: '' });
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
-  const handleChange = (e) => { 
-    setFormData({ ...formData, [e.target.name]: e.target.value }); 
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); 
-    setLoading(true); 
+    e.preventDefault();
+    setLoading(true);
     setError('');
-    
+
     try {
-      const response = await authService.login(formData.username, formData.password);
-
-      // Stocker le token
-      localStorage.setItem('token', response.token);
-
-      // Stocker l'utilisateur renvoyé par le backend (username, role, redirect)
-      const user = {
-        username: response.username || formData.username,
-        role: response.role, // 'ADMIN' | 'USER'
-        redirect: response.redirect,
-      };
-      localStorage.setItem('user', JSON.stringify(user));
-
-      toast.success('Connexion réussie !');
-      navigate(response.redirect || '/customers');
+      const { role, redirect } = await authService.login(formData.username, formData.password);
       
-    } catch (err) { 
-      const errorMessage = err.response?.data || 'Identifiants invalides';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally { 
-      setLoading(false); 
+      toast.success(`Connexion réussie ! Bienvenue ${formData.username}`);
+      
+      // Redirection basée sur le rôle
+      if (role === 'ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/liquidations');
+      }
+    } catch (error) {
+      setError(error.message);
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="login-hero">
-      <Card className="surface login-card p-3">
-        <div className="text-center pb-1">
-          <h2 className="login-title mb-1">Bienvenue 👋</h2>
-          <div className="login-subtitle">Connectez-vous pour continuer</div>
-        </div>
-        {error && <div className="alert alert-danger py-2 mb-3">{error}</div>}
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-3">
-            <Form.Label>Nom d'utilisateur</Form.Label>
-            <div className="d-flex align-items-center gap-2">
-              <span className="text-muted"><FaUser /></span>
-              <Form.Control 
-                className="pill-input" 
-                type="text" 
-                name="username" 
-                value={formData.username} 
-                onChange={handleChange} 
-                placeholder="Entrer votre identifiant" 
-                required 
-              />
-            </div>
-          </Form.Group>
-          <Form.Group className="mb-4">
-            <Form.Label>Mot de passe</Form.Label>
-            <div className="d-flex align-items-center gap-2">
-              <span className="text-muted"><FaLock /></span>
-              <Form.Control 
-                className="pill-input" 
-                type="password" 
-                name="password" 
-                value={formData.password} 
-                onChange={handleChange} 
-                placeholder="••••••••" 
-                required 
-              />
-            </div>
-          </Form.Group>
-          <Button 
-            type="submit" 
-            className="w-100 gradient-btn" 
-            disabled={loading}
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </Button>
-        </Form>
-        <div className="text-center mt-3">
-          <span className="text-muted me-1">Pas encore de compte ?</span>
-          <Link to="/register" className="text-decoration-none fw-bold">Créer un compte</Link>
-        </div>
-      </Card>
-    </div>
+    <Container fluid className="login-hero">
+      <Row className="justify-content-center">
+        <Col md={6} lg={4}>
+          <Card className="login-card surface">
+            <Card.Body className="p-4">
+              <div className="text-center mb-4">
+                <h2 className="login-title text-primary">Connexion</h2>
+                <p className="login-subtitle">Accédez à votre espace de gestion</p>
+              </div>
+
+              {error && (
+                <Alert variant="danger" className="mb-3">
+                  {error}
+                </Alert>
+              )}
+
+              <Form onSubmit={handleSubmit}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Nom d'utilisateur</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    required
+                    placeholder="Entrez votre nom d'utilisateur"
+                    className="pill-input"
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-4">
+                  <Form.Label>Mot de passe</Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                    placeholder="Entrez votre mot de passe"
+                    className="pill-input"
+                  />
+                </Form.Group>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="w-100 gradient-btn"
+                  disabled={loading}
+                >
+                  {loading ? 'Connexion...' : 'Se connecter'}
+                </Button>
+              </Form>
+
+              <div className="text-center mt-4">
+                <p className="text-muted">
+                  Pas encore de compte ?{' '}
+                  <Button variant="link" onClick={() => navigate('/register')} className="p-0">
+                    S'inscrire
+                  </Button>
+                </p>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 };
 

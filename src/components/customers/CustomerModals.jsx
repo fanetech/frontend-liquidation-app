@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { toast } from 'react-toastify';
-import { customerService } from '../../services/customerService';
+import customerService from '../../services/customerService.js';
+import liquidationService from '../../services/liquidationService.js';
 
 // Schéma de validation
 const customerSchema = yup.object({
@@ -58,10 +59,10 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
   const onSubmit = async (data) => {
     try {
       if (isAdd) {
-        await customerService.createCustomer(data);
+        await customerService.create(data);
         toast.success('Client ajouté avec succès');
       } else if (isEdit) {
-        await customerService.updateCustomer(customer.id, data);
+        await customerService.update(customer.id, data);
         toast.success('Client modifié avec succès');
       }
       onSuccess();
@@ -74,14 +75,10 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
 
   const getModalTitle = () => {
     switch (type) {
-      case 'add':
-        return 'Ajouter un client';
-      case 'edit':
-        return 'Modifier le client';
-      case 'view':
-        return 'Détails du client';
-      default:
-        return 'Client';
+      case 'add': return 'Ajouter un client';
+      case 'edit': return 'Modifier le client';
+      case 'view': return 'Détails du client';
+      default: return 'Client';
     }
   };
 
@@ -103,9 +100,7 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
                   isInvalid={!!errors.firstName}
                   disabled={isView}
                 />
-                <Form.Control.Feedback type="invalid">
-                  {errors.firstName?.message}
-                </Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid">{errors.firstName?.message}</Form.Control.Feedback>
               </Form.Group>
             </Col>
             
@@ -118,9 +113,7 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
                   isInvalid={!!errors.lastName}
                   disabled={isView}
                 />
-                <Form.Control.Feedback type="invalid">
-                  {errors.lastName?.message}
-                </Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid">{errors.lastName?.message}</Form.Control.Feedback>
               </Form.Group>
             </Col>
           </Row>
@@ -135,9 +128,7 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
                   isInvalid={!!errors.email}
                   disabled={isView}
                 />
-                <Form.Control.Feedback type="invalid">
-                  {errors.email?.message}
-                </Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid">{errors.email?.message}</Form.Control.Feedback>
               </Form.Group>
             </Col>
             
@@ -151,9 +142,7 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
                   disabled={isView}
                   placeholder="+226 XX XX XX XX"
                 />
-                <Form.Control.Feedback type="invalid">
-                  {errors.phone?.message}
-                </Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid">{errors.phone?.message}</Form.Control.Feedback>
               </Form.Group>
             </Col>
           </Row>
@@ -169,9 +158,7 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
                   disabled={isView}
                   placeholder="Numéro IFU"
                 />
-                <Form.Control.Feedback type="invalid">
-                  {errors.ifu?.message}
-                </Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid">{errors.ifu?.message}</Form.Control.Feedback>
               </Form.Group>
             </Col>
           </Row>
@@ -186,16 +173,44 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
               disabled={isView}
               placeholder="Adresse complète"
             />
-            <Form.Control.Feedback type="invalid">
-              {errors.address?.message}
-            </Form.Control.Feedback>
+            <Form.Control.Feedback type="invalid">{errors.address?.message}</Form.Control.Feedback>
           </Form.Group>
 
           {customer && (
-            <Alert variant="info">
-              <strong>ID:</strong> {customer.id}
-            </Alert>
+            <Alert variant="info"><strong>ID:</strong> {customer.id}</Alert>
           )}
+
+          {/* ✅ Liste des liquidations du client */}
+          {isView && customer?.liquidations?.length > 0 && (
+            <div className="mt-3">
+              <h5>Liquidations du client</h5>
+              <table className="table table-sm table-bordered">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Type de taxe</th>
+                    <th>Montant</th>
+                    <th>Status</th>
+                    <th>Date émission</th>
+                    <th>Date échéance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customer.liquidations.map((liq) => (
+                    <tr key={liq.id}>
+                      <td>{liq.id}</td>
+                      <td>{liq.taxType}</td>
+                      <td>{liq.amount}</td>
+                      <td>{liq.status}</td>
+                      <td>{liq.issueDate}</td>
+                      <td>{liq.dueDate}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
         </Modal.Body>
 
         <Modal.Footer>
@@ -203,11 +218,7 @@ const CustomerModals = ({ show, type, customer, onClose, onSuccess }) => {
             {isView ? 'Fermer' : 'Annuler'}
           </Button>
           {!isView && (
-            <Button 
-              variant={isAdd ? 'primary' : 'warning'} 
-              type="submit" 
-              disabled={isSubmitting}
-            >
+            <Button variant={isAdd ? 'primary' : 'warning'} type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Enregistrement...' : (isAdd ? 'Ajouter' : 'Modifier')}
             </Button>
           )}

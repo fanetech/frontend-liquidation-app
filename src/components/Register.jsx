@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Form, Button, Card, Container, Alert } from 'react-bootstrap';
-import { useNavigate, Link } from 'react-router-dom';
-import { authService } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { Container, Row, Col, Card, Form, Button, Alert, Tabs, Tab } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+import { authService } from '../services/api.js';
 
 const Register = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -12,8 +13,7 @@ const Register = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('user');
 
   const handleChange = (e) => {
     setFormData({
@@ -23,16 +23,20 @@ const Register = () => {
   };
 
   const validateForm = () => {
-    if (formData.password !== formData.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+    if (!formData.username.trim()) {
+      setError('Le nom d\'utilisateur est obligatoire');
+      return false;
+    }
+    if (!formData.password) {
+      setError('Le mot de passe est obligatoire');
       return false;
     }
     if (formData.password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return false;
     }
-    if (formData.username.length < 3) {
-      setError('Le nom d\'utilisateur doit contenir au moins 3 caractères');
+    if (formData.password !== formData.confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
       return false;
     }
     return true;
@@ -42,7 +46,6 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
 
     if (!validateForm()) {
       setLoading(false);
@@ -50,91 +53,164 @@ const Register = () => {
     }
 
     try {
-      await authService.register(formData.username, formData.password);
-      setSuccess('Inscription réussie ! Vous pouvez maintenant vous connecter.');
-      toast.success('Inscription réussie !');
+      if (activeTab === 'user') {
+        await authService.registerUser(formData.username, formData.password);
+        toast.success('Compte utilisateur créé avec succès !');
+      } else {
+        await authService.registerAdmin(formData.username, formData.password);
+        toast.success('Compte administrateur créé avec succès !');
+      }
       
-      // Rediriger vers la connexion après 2 secondes
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-    } catch (err) {
-      const errorMessage = err.response?.data || 'Erreur lors de l\'inscription';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      navigate('/login');
+    } catch (error) {
+      setError(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '80vh' }}>
-      <Card style={{ width: '400px' }}>
-        <Card.Header className="text-center">
-          <h3>📝 Inscription</h3>
-        </Card.Header>
-        <Card.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
-          {success && <Alert variant="success">{success}</Alert>}
-          
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Nom d'utilisateur</Form.Label>
-              <Form.Control
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                required
-                placeholder="Choisissez un nom d'utilisateur"
-                minLength={3}
-              />
-            </Form.Group>
+    <Container fluid className="login-hero">
+      <Row className="justify-content-center">
+        <Col md={6} lg={4}>
+          <Card className="login-card surface">
+            <Card.Body className="p-4">
+              <div className="text-center mb-4">
+                <h2 className="login-title text-primary">Inscription</h2>
+                <p className="login-subtitle">Créez votre compte</p>
+              </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Mot de passe</Form.Label>
-              <Form.Control
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                placeholder="Choisissez un mot de passe"
-                minLength={6}
-              />
-            </Form.Group>
+              {error && (
+                <Alert variant="danger" className="mb-3">
+                  {error}
+                </Alert>
+              )}
 
-            <Form.Group className="mb-3">
-              <Form.Label>Confirmer le mot de passe</Form.Label>
-              <Form.Control
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                placeholder="Confirmez votre mot de passe"
-                minLength={6}
-              />
-            </Form.Group>
+              <Tabs
+                activeKey={activeTab}
+                onSelect={(k) => setActiveTab(k)}
+                className="mb-3"
+              >
+                <Tab eventKey="user" title="Utilisateur">
+                  <Form onSubmit={handleSubmit}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Nom d'utilisateur</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        required
+                        placeholder="Entrez votre nom d'utilisateur"
+                        className="pill-input"
+                      />
+                    </Form.Group>
 
-            <Button
-              variant="success"
-              type="submit"
-              className="w-100 mb-3"
-              disabled={loading}
-            >
-              {loading ? 'Inscription...' : 'S\'inscrire'}
-            </Button>
-          </Form>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Mot de passe</Form.Label>
+                      <Form.Control
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        placeholder="Entrez votre mot de passe"
+                        className="pill-input"
+                      />
+                    </Form.Group>
 
-          <div className="text-center">
-            <p className="mb-0">
-              Déjà un compte ?{' '}
-              <Link to="/login">Se connecter</Link>
-            </p>
-          </div>
-        </Card.Body>
-      </Card>
+                    <Form.Group className="mb-4">
+                      <Form.Label>Confirmer le mot de passe</Form.Label>
+                      <Form.Control
+                        type="password"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        required
+                        placeholder="Confirmez votre mot de passe"
+                        className="pill-input"
+                      />
+                    </Form.Group>
+
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="lg"
+                      className="w-100 gradient-btn"
+                      disabled={loading}
+                    >
+                      {loading ? 'Création...' : 'Créer un compte utilisateur'}
+                    </Button>
+                  </Form>
+                </Tab>
+
+                <Tab eventKey="admin" title="Administrateur">
+                  <Form onSubmit={handleSubmit}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Nom d'utilisateur</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        required
+                        placeholder="Entrez votre nom d'utilisateur"
+                        className="pill-input"
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Label>Mot de passe</Form.Label>
+                      <Form.Control
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        placeholder="Entrez votre mot de passe"
+                        className="pill-input"
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-4">
+                      <Form.Label>Confirmer le mot de passe</Form.Label>
+                      <Form.Control
+                        type="password"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        required
+                        placeholder="Confirmez votre mot de passe"
+                        className="pill-input"
+                      />
+                    </Form.Group>
+
+                    <Button
+                      type="submit"
+                      variant="danger"
+                      size="lg"
+                      className="w-100 gradient-btn"
+                      disabled={loading}
+                    >
+                      {loading ? 'Création...' : 'Créer un compte administrateur'}
+                    </Button>
+                  </Form>
+                </Tab>
+              </Tabs>
+
+              <div className="text-center mt-4">
+                <p className="text-muted">
+                  Déjà un compte ?{' '}
+                  <Button variant="link" onClick={() => navigate('/login')} className="p-0">
+                    Se connecter
+                  </Button>
+                </p>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
     </Container>
   );
 };
