@@ -15,6 +15,8 @@ import Admin from './components/Admin';
 import ProtectedRoute from './components/ProtectedRoute';
 import CustomersPage from './components/customers/CustomersPage';
 import LiquidationsPage from './components/liquidations/LiquidationsPage';
+import LiquidationDetail from './components/liquidations/LiquidationDetail';
+import QRCodeDemo from './components/QRCodeDemo';
 
 function App() {
   return (
@@ -47,6 +49,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <LiquidationsPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/liquidations/:id" 
+              element={
+                <ProtectedRoute>
+                  <LiquidationDetail />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/qr-demo" 
+              element={
+                <ProtectedRoute>
+                  <QRCodeDemo />
                 </ProtectedRoute>
               } 
             />

@@ -1,47 +1,94 @@
-import api from './api';
-import { config } from '../config';
+import api from './api.js';
+import { ENDPOINTS } from '../config.js';
 
-const LIQ_ENDPOINT = config.ENDPOINTS.LIQUIDATIONS;
+export const liquidationService = {
+  // Lister les liquidations avec filtres et pagination
+  async list(filters = {}) {
+    try {
+      const {
+        customerId,
+        status,
+        startDate,
+        endDate,
+        page = 0,
+        size = 10
+      } = filters;
 
-// Liste paginée avec filtres
-export async function listLiquidations({ customerId, status, startDate, endDate, page = 0, size = 10 } = {}) {
-  const params = new URLSearchParams();
-  if (customerId) params.append('customerId', customerId);
-  if (status) params.append('status', status);
-  if (startDate) params.append('startDate', startDate);
-  if (endDate) params.append('endDate', endDate);
-  params.append('page', page);
-  params.append('size', size);
-  const { data } = await api.get(`${LIQ_ENDPOINT}?${params.toString()}`);
-  return data; // Spring Page<Liquidation>
-}
+      const params = { page, size };
+      
+      if (customerId) params.customerId = customerId;
+      if (status) params.status = status;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
 
-export async function getLiquidation(id) {
-  const { data } = await api.get(`${LIQ_ENDPOINT}/${id}`);
-  return data;
-}
+      const response = await api.get(ENDPOINTS.LIQUIDATIONS, { params });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur lors de la récupération des liquidations');
+    }
+  },
 
-export async function createLiquidation(liquidation) {
-  const { data } = await api.post(LIQ_ENDPOINT, liquidation);
-  return data;
-}
+  // Obtenir une liquidation par ID
+  async get(id) {
+    try {
+      const response = await api.get(`${ENDPOINTS.LIQUIDATIONS}/${id}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur lors de la récupération de la liquidation');
+    }
+  },
 
-export async function updateLiquidation(id, liquidation) {
-  const { data } = await api.put(`${LIQ_ENDPOINT}/${id}`, liquidation);
-  return data;
-}
+  // Créer une nouvelle liquidation
+  async create(liquidationData) {
+    try {
+      const response = await api.post(ENDPOINTS.LIQUIDATIONS, liquidationData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur lors de la création de la liquidation');
+    }
+  },
 
-export async function payLiquidation(id) {
-  const { data } = await api.put(`${LIQ_ENDPOINT}/${id}/pay`);
-  return data;
-}
+  // Mettre à jour une liquidation
+  async update(id, liquidationData) {
+    try {
+      const response = await api.put(`${ENDPOINTS.LIQUIDATIONS}/${id}`, liquidationData);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur lors de la mise à jour de la liquidation');
+    }
+  },
 
-export async function listByCustomer(customerId) {
-  const { data } = await api.get(`${LIQ_ENDPOINT}/customer/${customerId}`);
-  return data;
-}
+  // Marquer une liquidation comme payée
+  async payLiquidation(id) {
+    try {
+      const response = await api.put(`${ENDPOINTS.LIQUIDATIONS}/${id}/pay`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur lors du paiement de la liquidation');
+    }
+  },
 
-export async function getPenalty(id, dailyRate = 0.0) {
-  const { data } = await api.get(`${LIQ_ENDPOINT}/${id}/penalty?dailyRate=${dailyRate}`);
-  return data;
-}
+  // Obtenir les liquidations d'un client
+  async getByCustomer(customerId) {
+    try {
+      const response = await api.get(`${ENDPOINTS.LIQUIDATIONS}/customer/${customerId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur lors de la récupération des liquidations du client');
+    }
+  },
+
+  // Calculer la pénalité pour une liquidation
+  async calculatePenalty(id, dailyRate = 0.0) {
+    try {
+      const response = await api.get(`${ENDPOINTS.LIQUIDATIONS}/${id}/penalty`, {
+        params: { dailyRate }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur lors du calcul de la pénalité');
+    }
+  }
+};
+
+export default liquidationService;

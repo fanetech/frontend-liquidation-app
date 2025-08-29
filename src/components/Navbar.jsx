@@ -27,6 +27,7 @@ const Navigation = () => {
               <>
                 <Nav.Link as={Link} to="/customers">Clients</Nav.Link>
                 <Nav.Link as={Link} to="/liquidations">Liquidations</Nav.Link>
+                <Nav.Link as={Link} to="/qr-demo">QR Demo</Nav.Link>
                 {isAdmin && (
                   <Nav.Link as={Link} to="/admin">Administration</Nav.Link>
                 )}

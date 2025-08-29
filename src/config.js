@@ -1,37 +1,39 @@
-// Configuration de l'application
-export const config = {
-  // URL de l'API backend
-  API_BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
-  
-  // URL du backend
-  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080',
-  
-  // Configuration des timeouts
-  REQUEST_TIMEOUT: 10000,
-  
-  // Messages d'erreur par défaut
-  DEFAULT_ERROR_MESSAGE: 'Une erreur est survenue. Veuillez réessayer.',
-  
-  // Configuration de l'authentification
-  TOKEN_KEY: 'token',
-  USER_KEY: 'user',
-  
-  // Rôles de l'application
-  ROLES: {
-    USER: 'ROLE_USER',
-    ADMIN: 'ROLE_ADMIN'
+// Configuration de l'API
+export const API_BASE_URL = 'http://localhost:8080/api';
+
+// Configuration JWT
+export const JWT_STORAGE_KEY = 'liquidation_jwt_token';
+export const USER_STORAGE_KEY = 'liquidation_user_data';
+
+// Configuration des endpoints
+export const ENDPOINTS = {
+  AUTH: {
+    LOGIN: '/auth/login',
+    REGISTER_USER: '/auth/register/user',
+    REGISTER_ADMIN: '/auth/register/admin'
   },
-  
-  // Endpoints de l'API
-  ENDPOINTS: {
-    AUTH: {
-      LOGIN: '/auth/login',
-      REGISTER: '/auth/register/user',
-      CREATE_ADMIN: '/auth/register/admin'
-    },
-    CUSTOMERS: '/customers',
-    LIQUIDATIONS: '/liquidations'
-  }
+  CUSTOMERS: '/customers',
+  LIQUIDATIONS: '/liquidations'
 };
 
-export default config;
+// Configuration des rôles
+export const ROLES = {
+  ADMIN: 'ADMIN',
+  USER: 'USER'
+};
+
+// Configuration des statuts de liquidation
+export const LIQUIDATION_STATUS = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE'
+};
+
+// Configuration des types de taxes
+export const TAX_TYPES = [
+  'TVA',
+  'IS',
+  'IRPP',
+  'TSS',
+  'AUTRES'
+];

@@ -1,20 +1,19 @@
 import axios from 'axios';
-import { config } from '../config';
+import { API_BASE_URL, ENDPOINTS, JWT_STORAGE_KEY, USER_STORAGE_KEY, ROLES } from '../config.js';
 
-const API_BASE_URL = config.API_BASE_URL;
-
-// Configuration axios avec intercepteur pour ajouter le token JWT
+// Configuration axios
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Intercepteur pour ajouter le token JWT à chaque requête
+// Intercepteur pour ajouter le token JWT
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(JWT_STORAGE_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,13 +24,13 @@ api.interceptors.request.use(
   }
 );
 
-// Intercepteur pour gérer les erreurs de réponse
+// Intercepteur pour gérer les erreurs
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem(JWT_STORAGE_KEY);
+      localStorage.removeItem(USER_STORAGE_KEY);
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -40,61 +39,82 @@ api.interceptors.response.use(
 
 // Service d'authentification
 export const authService = {
-  login: async (username, password) => {
-    const response = await api.post(config.ENDPOINTS.AUTH.LOGIN, { username, password });
-    return response.data;
-  },
-
-  register: async (username, password, role = null) => {
-    const data = { username, password };
-    if (role) {
-      data.role = role;
-    }
-    const response = await api.post(config.ENDPOINTS.AUTH.REGISTER, data);
-    return response.data;
-  },
-
-  createAdmin: async (username, password) => {
-    const response = await api.post(config.ENDPOINTS.AUTH.CREATE_ADMIN, { username, password });
-    return response.data;
-  },
-
-  logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  },
-
-  getCurrentUser: () => {
+  // Connexion
+  async login(username, password) {
     try {
-      const user = localStorage.getItem('user');
-      return user ? JSON.parse(user) : null;
-    } catch (error) {
-      console.error('Erreur lors du parsing de l\'utilisateur:', error);
-      localStorage.removeItem('user');
-      return null;
-    }
-  },
-
-  isAuthenticated: () => {
-    return !!localStorage.getItem('token');
-  },
-
-  isAdmin: () => {
-    const user = authService.getCurrentUser();
-    if (!user) return false;
-    // Prefer backend-provided simplified role: "ADMIN" | "USER"
-    if (user.role) {
-      return user.role === 'ADMIN';
-    }
-    // Fallback for legacy structure with roles array
-    if (user.roles) {
-      const roles = Array.isArray(user.roles) ? user.roles : [];
-      return roles.some(role => {
-        const roleName = typeof role === 'string' ? role : role.name;
-        return roleName === 'ROLE_ADMIN';
+      const response = await api.post(ENDPOINTS.AUTH.LOGIN, {
+        username,
+        password
       });
+      
+      const { token, username: user, role, redirect } = response.data;
+      
+      // Stocker le token et les données utilisateur
+      localStorage.setItem(JWT_STORAGE_KEY, token);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify({
+        username: user,
+        role,
+        redirect
+      }));
+      
+      return { token, username: user, role, redirect };
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur de connexion');
     }
-    return false;
+  },
+
+  // Inscription utilisateur
+  async registerUser(username, password) {
+    try {
+      const response = await api.post(ENDPOINTS.AUTH.REGISTER_USER, {
+        username,
+        password
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur d\'inscription');
+    }
+  },
+
+  // Inscription admin
+  async registerAdmin(username, password) {
+    try {
+      const response = await api.post(ENDPOINTS.AUTH.REGISTER_ADMIN, {
+        username,
+        password
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data || 'Erreur d\'inscription admin');
+    }
+  },
+
+  // Déconnexion
+  logout() {
+    localStorage.removeItem(JWT_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+  },
+
+  // Vérifier si l'utilisateur est connecté
+  isAuthenticated() {
+    return !!localStorage.getItem(JWT_STORAGE_KEY);
+  },
+
+  // Obtenir les données utilisateur
+  getCurrentUser() {
+    const userData = localStorage.getItem(USER_STORAGE_KEY);
+    return userData ? JSON.parse(userData) : null;
+  },
+
+  // Vérifier si l'utilisateur est admin
+  isAdmin() {
+    const user = this.getCurrentUser();
+    return user?.role === ROLES.ADMIN;
+  },
+
+  // Obtenir le token JWT
+  getToken() {
+    return localStorage.getItem(JWT_STORAGE_KEY);
   }
 };
 
